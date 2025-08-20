@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Тапалки — простая кликер-игра</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --btn: #22c55e;
+      --btn-shadow: rgba(34, 197, 94, 0.6);
+      --text: #e5e7eb;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 50% 30%, #121521 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+      overflow-x: hidden;
+    }
+
+    .score {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: 0.3px;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4);
+      pointer-events: none;
+    }
+
+    .stage {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .tap-btn {
+      position: relative;
+      width: min(42vmin, 280px);
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      border: none;
+      background: radial-gradient(60% 60% at 35% 30%, #34d399 0%, var(--btn) 60%);
+      box-shadow:
+        0 0 0 10px rgba(34, 197, 94, 0.12),
+        0 18px 40px -8px var(--btn-shadow),
+        inset 0 -12px 24px rgba(0,0,0,.25);
+      cursor: pointer;
+      outline-offset: 6px;
+      color: #052e1a;
+      font-weight: 800;
+      font-size: clamp(16px, 3.2vmin, 22px);
+      letter-spacing: .3px;
+      transition: transform .06s ease;
+    }
+
+    .tap-btn:active { transform: scale(0.98); }
+
+    .hint {
+      position: fixed;
+      bottom: 20px;
+      left: 0; right: 0;
+      text-align: center;
+      opacity: .55;
+      font-size: 14px;
+    }
+
+    .reset-btn {
+      position: fixed;
+      top: 16px;
+      left: 20px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: none;
+      background: #ef4444;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,.3);
+      transition: transform .08s ease;
+    }
+    .reset-btn:active { transform: scale(0.96); }
+
+    /* Анимация монет */
+    .coin {
+      position: fixed;
+      top: -40px;
+      font-size: 24px;
+      pointer-events: none;
+      animation: fall linear forwards;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(110vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="score" id="score">Очки: 0</div>
+  <button class="reset-btn" id="reset">Вывод</button>
+
+  <div class="stage">
+    <button class="tap-btn" id="tap" aria-label="Заработать одно очко">Нажми!</button>
+  </div>
+
+  <div class="hint" aria-hidden="true">Минимальный вывод: 1000</div>
+
+  <audio id="click-sound" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" type="audio/ogg">
+    <source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="reset-sound" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/foley/coins.ogg" type="audio/ogg">
+    <source src="https://actions.google.com/sounds/v1/foley/coins.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    (function () {
+      const btn = document.getElementById('tap');
+      const scoreEl = document.getElementById('score');
+      const resetBtn = document.getElementById('reset');
+      const clickSound = document.getElementById('click-sound');
+      const resetSound = document.getElementById('reset-sound');
+      let score = 0;
+
+      function render() {
+        scoreEl.textContent = 'Очки: ' + score;
+        try { localStorage.setItem('tapalki_score', String(score)); } catch (_) {}
+      }
+
+      function load() {
+        try {
+          const saved = localStorage.getItem('tapalki_score');
+          if (saved !== null) score = parseInt(saved, 10) || 0;
+        } catch (_) {}
+        render();
+      }
+
+      function spawnCoins(count = 10) {
+        for (let i = 0; i < count; i++) {
+          const coin = document.createElement('div');
+          coin.textContent = '🪙';
+          coin.className = 'coin';
+          coin.style.left = Math.random() * 100 + 'vw';
+          coin.style.animationDuration = (1.5 + Math.random() * 1.5) + 's';
+          document.body.appendChild(coin);
+          setTimeout(() => coin.remove(), 3000);
+        }
+      }
+
+      function tick() {
+        score += 1;
+        render();
+        clickSound.currentTime = 0;
+        clickSound.play().catch(()=>{});
+        if (score % 1000 === 0) {
+          spawnCoins(30);
+        }
+      }
+
+      btn.addEventListener('click', tick);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          tick();
+          btn.focus();
+        }
+      }, { passive: false });
+
+      resetBtn.addEventListener('click', () => {
+        if (confirm('Вы уверены, что хотите вывести свой заработок?')) {
+          score = 0;
+          render();
+          resetSound.currentTime = 0;
+          resetSound.play().catch(()=>{});
+          spawnCoins(20);
+        }
+      });
+
+      load();
+    })();
+  </script>
+</body>
+</html>
